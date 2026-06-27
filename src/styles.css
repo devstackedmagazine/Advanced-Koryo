@@ -1,0 +1,134 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Tajawal", "Inter", system-ui, sans-serif;
+  --font-arabic: "Tajawal", system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-grey: var(--grey);
+  --color-whatsapp: var(--whatsapp);
+
+  --shadow-soft: 0 4px 16px -8px rgb(0 0 0 / 0.08);
+  --shadow-card: 0 8px 24px -12px rgb(0 0 0 / 0.10);
+  --shadow-gold: 0 0 0 3px rgb(10 10 10 / 0.15);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* MyKoryo — clean white + black + baby blue accent */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  --surface: #ffffff;
+  --surface-elevated: #f5f7fa;
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f3f4f6;
+  --secondary-foreground: #0a0a0a;
+
+  --muted: #f5f7fa;
+  --muted-foreground: #4b5563;
+
+  --accent: #f0f0f0;
+  --accent-foreground: #0a0a0a;
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(10, 10, 10, 0.10);
+  --input: rgba(10, 10, 10, 0.14);
+  --ring: #0a0a0a;
+
+  /* Legacy "gold" tokens now point to black for a monochrome system */
+  --gold: #0a0a0a;
+  --gold-foreground: #ffffff;
+
+  --grey: #f5f7fa;
+
+  --whatsapp: oklch(0.68 0.16 150);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-arabic);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-arabic);
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+  html[dir="ltr"] body,
+  html[dir="ltr"] h1, html[dir="ltr"] h2, html[dir="ltr"] h3, html[dir="ltr"] h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-gold { color: var(--gold); }
+  .bg-gold { background-color: var(--gold); }
+  .border-gold { border-color: var(--gold); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-elevated { background-color: var(--surface-elevated); }
+  .bg-grey { background-color: var(--grey); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-gold { box-shadow: var(--shadow-gold); }
+  .bg-whatsapp { background-color: var(--whatsapp); }
+  .text-shadow-sm { text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
+  .text-shadow-md { text-shadow: 0 2px 6px rgb(0 0 0 / 0.45); }
+  .text-shadow-lg { text-shadow: 0 4px 12px rgb(0 0 0 / 0.55); }
+}
+
+@keyframes drift-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-drift-in { animation: drift-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
