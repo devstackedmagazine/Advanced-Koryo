@@ -107,8 +107,6 @@ export function Header() {
               <li
                 key={e.label}
                 className="relative"
-                onMouseEnter={() => setOpenGroup(e.label)}
-                onMouseLeave={() => setOpenGroup((g) => (g === e.label ? null : g))}
               >
                 <button
                   type="button"
@@ -142,7 +140,7 @@ export function Header() {
           })}
         </ul>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center justify-end gap-2 shrink-0">
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-border text-xs font-semibold hover:bg-surface-elevated transition-colors"

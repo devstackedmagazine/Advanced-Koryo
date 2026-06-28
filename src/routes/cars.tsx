@@ -96,16 +96,16 @@ function CarsPage() {
               {list.length} {lang === "ar" ? "سيارة" : "vehicles"}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <input
               value={filters.q ?? ""}
               onChange={(e) => update("q", e.target.value)}
               placeholder={lang === "ar" ? "ابحث ماركة، موديل، رقم مخزون…" : "Search make, model, stock #…"}
-              className="h-10 px-3 rounded-lg border border-border bg-surface text-sm w-64"
+              className="h-10 px-3 rounded-lg border border-border bg-surface text-sm w-full sm:w-64"
             />
             <button
               onClick={() => setShowFilters((v) => !v)}
-              className="lg:hidden inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-border bg-surface text-sm font-semibold"
+              className="lg:hidden flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 h-10 px-3 rounded-lg border border-border bg-surface text-sm font-semibold"
             >
               <SlidersHorizontal className="w-4 h-4" />
               {lang === "ar" ? "تصفية" : "Filters"}
@@ -118,7 +118,7 @@ function CarsPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as never)}
-              className="h-10 px-3 rounded-lg border border-border bg-surface text-sm font-semibold"
+              className="flex-1 sm:flex-none h-10 px-3 rounded-lg border border-border bg-surface text-sm font-semibold"
             >
               <option value="new">{lang === "ar" ? "الأحدث" : "Newest year"}</option>
               <option value="low">{lang === "ar" ? "السعر: الأقل" : "Price: low → high"}</option>
@@ -217,10 +217,40 @@ function CarsPage() {
           {/* Results */}
           <div>
             {isLoading ? (
-              <p className="text-muted-foreground">…</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col animate-pulse">
+                    <div className="aspect-[16/11] bg-surface-elevated" />
+                    <div className="p-4 lg:p-5 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="h-3 w-1/3 rounded bg-surface-elevated" />
+                          <div className="h-5 w-3/4 rounded bg-surface-elevated" />
+                          <div className="h-3 w-1/4 rounded bg-surface-elevated" />
+                        </div>
+                        <div className="space-y-1.5 shrink-0">
+                          <div className="h-3 w-10 rounded bg-surface-elevated ms-auto" />
+                          <div className="h-6 w-16 rounded bg-surface-elevated ms-auto" />
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-4 gap-2">
+                        {Array.from({ length: 4 }).map((_, j) => (
+                          <div key={j} className="h-8 rounded bg-surface-elevated" />
+                        ))}
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-border flex items-center gap-2">
+                        <div className="h-9 w-24 rounded-lg bg-surface-elevated" />
+                        <div className="h-9 flex-1 rounded-lg bg-surface-elevated" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : list.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
-                {lang === "ar" ? "لا توجد سيارات تطابق التصفية." : "No vehicles match your filters."}
+                {all.length === 0
+                  ? (lang === "ar" ? "لا توجد سيارات متاحة حالياً." : "No vehicles available at the moment.")
+                  : (lang === "ar" ? "لا توجد سيارات تطابق التصفية." : "No vehicles match your filters.")}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

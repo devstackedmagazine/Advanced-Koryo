@@ -14,7 +14,7 @@ import {
 import { getAuctionBySlug, listAuctions } from "@/lib/catalog.functions";
 import { buildAuctionInquiry, waLink, WA_NUMBER } from "@/lib/whatsapp";
 
-export const Route = createFileRoute("/auctions/$id")({
+export const Route = createFileRoute("/auctions_/$id")({
   head: () => ({ meta: [{ title: "مزاد سيارة · Advanced Koryo" }] }),
   component: AuctionDetail,
 });
