@@ -1,11 +1,12 @@
 import heroAsset from "@/assets/hero-genesis-gv70.png.asset.json";
+import heroCar from "@/assets/hero-car.jpg";
 
 export function Hero() {
   return (
     <section className="relative w-full min-h-[60vh] sm:min-h-[70vh] lg:min-h-[80vh] flex items-center justify-center overflow-hidden">
       {/* Background image */}
       <img
-        src={heroAsset.url}
+        src={heroCar}
         alt="Genesis GV70"
         width={1920}
         height={1080}

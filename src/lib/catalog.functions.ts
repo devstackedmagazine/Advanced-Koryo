@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
+import { fetchEncarDetail, fetchEncarList } from "./encar.api";
+import { mapEncarToVehicle } from "./encar.mapper";
 
 function publicClient() {
   return createClient<Database>(
@@ -48,18 +50,15 @@ export const listVehicles = createServerFn({ method: "GET" })
     }).parse(d ?? {}),
   )
   .handler(async ({ data }) => {
-    const s = publicClient();
-    let q = s.from("vehicles")
-      .select("id, slug, make, model, trim, year, mileage_km, fuel, transmission, color, exterior_color, engine_cc, body_type, price_krw, price_sar, price_usd, images, status, featured, coming_soon, korea_location, city, title_ar, title_en, stock_number, created_at")
-      .eq("is_active", true)
-      .eq("listing_type", "vehicle")
-      .not("status", "in", "(hidden,draft)")
-      .order("created_at", { ascending: false })
-      .limit(data.limit ?? 50);
-    if (data.featuredOnly) q = q.eq("featured", true);
-    const { data: rows, error } = await q;
-    if (error) throw error;
-    return rows ?? [];
+    try {
+      const rawList = await fetchEncarList({ limit: data.limit ?? 50 });
+      const vehicles = rawList.map(mapEncarToVehicle);
+      // The API has no "featured" flag — surface the first N as featured.
+      return data.featuredOnly ? vehicles.slice(0, data.limit ?? 4) : vehicles;
+    } catch (err) {
+      console.error("[listVehicles] Encar API error:", err);
+      return [];
+    }
   });
 
 // ---------- Auctions (public) ----------
@@ -93,19 +92,20 @@ export const listAuctions = createServerFn({ method: "GET" })
 const VEHICLE_PUBLIC_COLUMNS =
   "id, slug, make, model, trim, year, mileage_km, fuel, transmission, color, exterior_color, interior_color, engine_cc, cylinders, body_type, drive_type, price_krw, price_sar, price_usd, images, status, featured, coming_soon, korea_location, city, title_ar, title_en, description, description_ar, condition, accident_history, options, stock_number, public_notes, inspection_notes, meta_title, meta_description, published_at, created_at, updated_at, est_shipping_sar, est_export_sar, inspection_fee_sar, negotiation_fee_sar, other_fees_sar, est_landed_sar, deposit_sar, listing_type, auction_source, auction_status, current_bid_krw, estimated_final_price_krw, auction_end_at";
 
-// Accepts slug OR uuid
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const getVehicleBySlug = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ slug: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    const s = publicClient();
-    const isUuid = UUID_RE.test(data.slug);
-    const q = s.from("vehicles").select(VEHICLE_PUBLIC_COLUMNS);
-    const { data: row } = isUuid
-      ? await q.eq("id", data.slug).maybeSingle()
-      : await q.eq("slug", data.slug).maybeSingle();
-    return row;
+    try {
+      const id = data.slug.match(/(\d+)$/)?.[1] ?? data.slug;
+      const raw = await fetchEncarDetail(id);
+      return mapEncarToVehicle(raw);
+    } catch (err) {
+      console.error("[getVehicleBySlug] Encar API error:", err);
+      return null;
+    }
   });
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const getAuctionBySlug = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ slug: z.string() }).parse(d))
@@ -120,6 +120,24 @@ export const getAuctionBySlug = createServerFn({ method: "GET" })
   });
 
 
+
+// ---------- Encar external API ----------
+
+export const getEncarVehicle = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ id: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const raw = await fetchEncarDetail(data.id);
+    return mapEncarToVehicle(raw);
+  });
+
+export const listEncarVehicles = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) =>
+    z.object({ limit: z.number().int().min(1).max(100).optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const rawList = await fetchEncarList({ limit: data.limit ?? 20 });
+    return rawList.map(mapEncarToVehicle);
+  });
 
 // ---------- Accessories ----------
 export const listAccessories = createServerFn({ method: "GET" })

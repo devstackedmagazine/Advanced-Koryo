@@ -27,8 +27,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CheckoutPaymentIdRouteImport } from './routes/checkout.$paymentId'
-import { Route as CarsIdRouteImport } from './routes/cars.$id'
-import { Route as AuctionsIdRouteImport } from './routes/auctions.$id'
+import { Route as CarsIdRouteImport } from './routes/cars_.$id'
+import { Route as AuctionsIdRouteImport } from './routes/auctions_.$id'
 import { Route as AdminAuctionsRouteImport } from './routes/admin.auctions'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AdminAuctionsNewRouteImport } from './routes/admin.auctions.new'
@@ -124,14 +124,14 @@ const CheckoutPaymentIdRoute = CheckoutPaymentIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const CarsIdRoute = CarsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CarsRoute,
+  id: '/cars_/$id',
+  path: '/cars/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuctionsIdRoute = AuctionsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuctionsRoute,
+  id: '/auctions_/$id',
+  path: '/auctions/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuctionsRoute = AdminAuctionsRouteImport.update({
   id: '/auctions',
@@ -159,10 +159,10 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/accessories': typeof AccessoriesRoute
   '/admin': typeof AdminRouteWithChildren
-  '/auctions': typeof AuctionsRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/calculator': typeof CalculatorRoute
-  '/cars': typeof CarsRouteWithChildren
+  '/cars': typeof CarsRoute
   '/contact': typeof ContactRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
@@ -184,10 +184,10 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/accessories': typeof AccessoriesRoute
   '/admin': typeof AdminRouteWithChildren
-  '/auctions': typeof AuctionsRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/calculator': typeof CalculatorRoute
-  '/cars': typeof CarsRouteWithChildren
+  '/cars': typeof CarsRoute
   '/contact': typeof ContactRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
@@ -211,10 +211,10 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/accessories': typeof AccessoriesRoute
   '/admin': typeof AdminRouteWithChildren
-  '/auctions': typeof AuctionsRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/calculator': typeof CalculatorRoute
-  '/cars': typeof CarsRouteWithChildren
+  '/cars': typeof CarsRoute
   '/contact': typeof ContactRoute
   '/how-it-works': typeof HowItWorksRoute
   '/privacy': typeof PrivacyRoute
@@ -225,8 +225,8 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/admin/auctions': typeof AdminAuctionsRouteWithChildren
-  '/auctions/$id': typeof AuctionsIdRoute
-  '/cars/$id': typeof CarsIdRoute
+  '/auctions_/$id': typeof AuctionsIdRoute
+  '/cars_/$id': typeof CarsIdRoute
   '/checkout/$paymentId': typeof CheckoutPaymentIdRoute
   '/admin/auctions/new': typeof AdminAuctionsNewRoute
   '/admin/auctions/$id/edit': typeof AdminAuctionsIdEditRoute
@@ -303,8 +303,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/_authenticated/account'
     | '/admin/auctions'
-    | '/auctions/$id'
-    | '/cars/$id'
+    | '/auctions_/$id'
+    | '/cars_/$id'
     | '/checkout/$paymentId'
     | '/admin/auctions/new'
     | '/admin/auctions/$id/edit'
@@ -316,10 +316,10 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccessoriesRoute: typeof AccessoriesRoute
   AdminRoute: typeof AdminRouteWithChildren
-  AuctionsRoute: typeof AuctionsRouteWithChildren
+  AuctionsRoute: typeof AuctionsRoute
   AuthRoute: typeof AuthRoute
   CalculatorRoute: typeof CalculatorRoute
-  CarsRoute: typeof CarsRouteWithChildren
+  CarsRoute: typeof CarsRoute
   ContactRoute: typeof ContactRoute
   HowItWorksRoute: typeof HowItWorksRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -328,6 +328,8 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SparePartsRoute: typeof SparePartsRoute
   TermsRoute: typeof TermsRoute
+  AuctionsIdRoute: typeof AuctionsIdRoute
+  CarsIdRoute: typeof CarsIdRoute
   CheckoutPaymentIdRoute: typeof CheckoutPaymentIdRoute
 }
 
@@ -459,19 +461,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutPaymentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cars/$id': {
-      id: '/cars/$id'
-      path: '/$id'
+    '/cars_/$id': {
+      id: '/cars_/$id'
+      path: '/cars/$id'
       fullPath: '/cars/$id'
       preLoaderRoute: typeof CarsIdRouteImport
-      parentRoute: typeof CarsRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/auctions/$id': {
-      id: '/auctions/$id'
-      path: '/$id'
+    '/auctions_/$id': {
+      id: '/auctions_/$id'
+      path: '/auctions/$id'
       fullPath: '/auctions/$id'
       preLoaderRoute: typeof AuctionsIdRouteImport
-      parentRoute: typeof AuctionsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/admin/auctions': {
       id: '/admin/auctions'
@@ -539,38 +541,16 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface AuctionsRouteChildren {
-  AuctionsIdRoute: typeof AuctionsIdRoute
-}
-
-const AuctionsRouteChildren: AuctionsRouteChildren = {
-  AuctionsIdRoute: AuctionsIdRoute,
-}
-
-const AuctionsRouteWithChildren = AuctionsRoute._addFileChildren(
-  AuctionsRouteChildren,
-)
-
-interface CarsRouteChildren {
-  CarsIdRoute: typeof CarsIdRoute
-}
-
-const CarsRouteChildren: CarsRouteChildren = {
-  CarsIdRoute: CarsIdRoute,
-}
-
-const CarsRouteWithChildren = CarsRoute._addFileChildren(CarsRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AccessoriesRoute: AccessoriesRoute,
   AdminRoute: AdminRouteWithChildren,
-  AuctionsRoute: AuctionsRouteWithChildren,
+  AuctionsRoute: AuctionsRoute,
   AuthRoute: AuthRoute,
   CalculatorRoute: CalculatorRoute,
-  CarsRoute: CarsRouteWithChildren,
+  CarsRoute: CarsRoute,
   ContactRoute: ContactRoute,
   HowItWorksRoute: HowItWorksRoute,
   PrivacyRoute: PrivacyRoute,
@@ -579,8 +559,20 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SparePartsRoute: SparePartsRoute,
   TermsRoute: TermsRoute,
+  AuctionsIdRoute: AuctionsIdRoute,
+  CarsIdRoute: CarsIdRoute,
   CheckoutPaymentIdRoute: CheckoutPaymentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

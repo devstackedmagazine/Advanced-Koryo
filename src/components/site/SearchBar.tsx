@@ -26,22 +26,34 @@ export function SearchBar() {
             if (fuel) params.set("fuel", fuel);
             navigate({ to: "/cars", search: Object.fromEntries(params) as never });
           }}
-          className="rounded-2xl bg-card border border-border shadow-card p-4 lg:p-5 grid grid-cols-2 lg:grid-cols-5 gap-3"
+          className="rounded-2xl bg-card border border-border shadow-card p-4 lg:p-5 grid grid-cols-2 lg:grid-cols-5 items-end gap-3"
         >
           <Field label={t.search.brand}>
             <select value={brand} onChange={(e) => setBrand(e.target.value)} className="field">
               <option value="">{t.search.any}</option>
-              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+              {brands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </Field>
           <Field label={t.search.year}>
             <select value={yearMin} onChange={(e) => setYearMin(e.target.value)} className="field">
               <option value="">{t.search.any}</option>
-              {[2024, 2023, 2022, 2021, 2020].map((y) => <option key={y} value={y}>{y}+</option>)}
+              {[2024, 2023, 2022, 2021, 2020].map((y) => (
+                <option key={y} value={y}>
+                  {y}+
+                </option>
+              ))}
             </select>
           </Field>
           <Field label={t.search.price}>
-            <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)} className="field">
+            <select
+              value={priceMax}
+              onChange={(e) => setPriceMax(e.target.value)}
+              className="field"
+            >
               <option value="">{t.search.any}</option>
               <option value="60000">≤ 60k</option>
               <option value="100000">≤ 100k</option>
@@ -89,7 +101,9 @@ export function SearchBar() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
+        {label}
+      </div>
       {children}
     </label>
   );
