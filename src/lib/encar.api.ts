@@ -94,3 +94,74 @@ export async function fetchVehicleOptions(id: string): Promise<unknown[]> {
   if (!json.success) throw new Error(json.message ?? "Encar options API error");
   return json.data ? Object.values(json.data as Record<string, unknown>) : [];
 }
+
+// ---------- Three-way parallel detail bundle ----------
+// Detail is mandatory; accident + options are best-effort (.catch → null) and never block.
+export type VehicleDetailBundle = {
+  car: any;
+  accident: any | null;          // normalized: accident?.data ?? accident
+  optionCategories: any[] | null; // array of { category, options } (both API shapes handled)
+  inspectionImages: string[];     // normalized front/back inspection photos
+};
+
+export async function fetchVehicleDetailBundle(id: string): Promise<VehicleDetailBundle> {
+  const headers = getHeaders();
+  const reqOpts = { headers, cache: "no-store" as const, signal: AbortSignal.timeout(8000) };
+
+  const [carRes, accRes, optRes] = await Promise.all([
+    fetch(`${BASE_URL}/vehicle/${id}/full`, reqOpts),
+    fetch(`${BASE_URL}/accident-history/${id}`, reqOpts).catch(() => null),
+    fetch(`${BASE_URL}/options/${id}`, reqOpts).catch(() => null),
+  ]);
+
+  // --- Car detail (mandatory, with list fallback) ---
+  let car: any | null = null;
+  try {
+    const carJson = (await carRes.json()) as { success: boolean; data?: any };
+    if (carJson.success && carJson.data) car = normalizeImages(carJson.data);
+  } catch {
+    /* fall through to list fallback */
+  }
+  if (!car) {
+    const list = await fetchEncarList({ limit: 100 });
+    car = list.find((c: any) => String(c.id) === String(id) || String(c.encar_id) === String(id)) ?? null;
+    if (!car) throw new Error(`Car with id ${id} not found`);
+  }
+
+  // --- Accident (best-effort, dual-format normalize) ---
+  let accident: any | null = null;
+  try {
+    if (accRes) {
+      const j = (await accRes.json()) as { success?: boolean; data?: any };
+      if (j && j.success !== false) accident = j.data ?? j;
+    }
+  } catch {
+    /* ignore */
+  }
+  if (!accident && car.accident) accident = car.accident; // embedded fallback
+
+  // --- Options (best-effort, both shapes) ---
+  let optionCategories: any[] | null = null;
+  try {
+    if (optRes) {
+      const j = (await optRes.json()) as { success?: boolean; data?: any };
+      const raw = j?.data;
+      if (Array.isArray(raw)) optionCategories = raw;
+      else if (raw && typeof raw === "object") {
+        optionCategories = Object.values(raw).filter((v: any) => v && typeof v === "object" && "options" in v);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  if (!optionCategories && Array.isArray(car.options)) optionCategories = car.options; // embedded fallback
+
+  // --- Inspection photos (appended after the car gallery) ---
+  const front = accident?.images?.front ?? null;
+  const back = accident?.images?.back ?? null;
+  const inspectionImages = [front, back]
+    .filter(Boolean)
+    .map((u: string) => normalizeImageUrl(u));
+
+  return { car, accident, optionCategories, inspectionImages };
+}

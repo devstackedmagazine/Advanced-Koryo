@@ -89,11 +89,51 @@ function flattenOptions(options: RawEncarCar["options"]): string[] {
   );
 }
 
-function formatAccidentHistory(acc: RawEncarCar["accidentHistory"]): string {
-  if (!acc) return "Clean history";
-  if (acc.hasAccident) return "Accident recorded";
-  if (acc.hasSimpleRepair) return "Minor repairs only — no structural accident";
+function truthy(v: unknown): boolean {
+  return v === true || v === "true";
+}
+
+function formatAccidentHistory(accidentBlock: any, embedded?: RawEncarCar["accidentHistory"]): string {
+  const a = accidentBlock ?? embedded;
+  if (!a) return "Clean history";
+  if (truthy(a.hasAccident)) return "Accident recorded";
+  if (truthy(a.hasSimpleRepair)) return "Minor repairs only — no structural accident";
   return "Clean history";
+}
+
+export type BodyDamageItem = {
+  partCode?: string;
+  partName?: string;
+  group: "skin" | "skeleton";
+  marker: "X" | "W"; // X = Replaced (red), W = Repaired (amber)
+  status?: string;
+};
+
+// Converts repairHistory into diagram/table markers.
+// Mock-template guard: API sometimes returns a generic demo (14 simple + 23 structural) — ignore it.
+export function buildBodyDamage(repairHistory: any): BodyDamageItem[] {
+  const simple = Array.isArray(repairHistory?.simpleRepairs) ? repairHistory.simpleRepairs : [];
+  const structural = Array.isArray(repairHistory?.structuralRepairs) ? repairHistory.structuralRepairs : [];
+  if (simple.length === 14 && structural.length === 23) return [];
+
+  const markerCode = (r: any): "X" | "W" => (r?.status === "Replaced" || r?.rankCode === "1" ? "X" : "W");
+  const items: BodyDamageItem[] = [];
+  for (const r of simple) {
+    items.push({ partCode: r.code, partName: r.partNameEnglish ?? r.partName, group: "skin", marker: markerCode(r), status: r.status });
+  }
+  for (const r of structural) {
+    items.push({ partCode: r.code, partName: r.partNameEnglish ?? r.partName, group: "skeleton", marker: markerCode(r), status: r.status });
+  }
+  return items;
+}
+
+function mapRepairs(list: any): { partName: string; status: string; marker: "X" | "W" }[] {
+  if (!Array.isArray(list)) return [];
+  return list.map((r: any) => ({
+    partName: r.partNameEnglish ?? r.partName ?? "—",
+    status: r.status ?? "—",
+    marker: r.status === "Replaced" || r.rankCode === "1" ? "X" : "W",
+  }));
 }
 
 function formatExportWarnings(eligibility: RawEncarCar["exportEligibility"]): string | null {
@@ -107,10 +147,75 @@ function parseDriveTypeFromTitle(title?: string): string | null {
   return m ? m[1] : null;
 }
 
-export function mapEncarToVehicle(raw: unknown) {
+type DetailBundle = {
+  accident?: any | null;
+  optionCategories?: any[] | null;
+  inspectionImages?: string[];
+};
+
+export function mapEncarToVehicle(raw: unknown, bundle?: DetailBundle) {
   const data = raw as RawEncarCar;
   const priceKRW = data.price ?? data.prices?.KRW ?? null;
-  const images = (data.images ?? (data.image ? [data.image] : [])).map(normalizeImageUrl);
+  const baseImages = (data.images ?? (data.image ? [data.image] : [])).map(normalizeImageUrl);
+  const images = [...baseImages, ...(bundle?.inspectionImages ?? [])];
+
+  // Accident is already normalized (accident?.data ?? accident) by the bundle fetcher.
+  const acc = bundle?.accident ?? null;
+  const repairHistory = acc?.repairHistory ?? acc;
+  const insuranceHistory = acc?.insuranceHistory ?? acc;
+  const engine = acc?.engine ?? acc;
+  const vehicleBlock = acc?.vehicle ?? acc;
+  const accidentBlock = acc?.accident ?? acc;
+
+  const simpleRepairs = mapRepairs(repairHistory?.simpleRepairs);
+  const structuralRepairs = mapRepairs(repairHistory?.structuralRepairs);
+  const bodyDamage = acc ? buildBodyDamage(repairHistory) : [];
+
+  const insurance = acc
+    ? {
+        totalDamageAmount: insuranceHistory?.totalDamageAmount ?? null,
+        totalIncidents: insuranceHistory?.totalIncidents ?? null,
+        ownerChangeCnt: acc?.ownerChangeCnt ?? insuranceHistory?.ownerChangeCnt ?? null,
+        totalLossCnt: acc?.totalLossCnt ?? insuranceHistory?.totalLossCnt ?? null,
+        ownCarDamage: insuranceHistory?.ownCarDamage
+          ?? (acc?.ownCarDamageAmount != null ? { amount: acc.ownCarDamageAmount, count: acc.ownCarDamageCount } : null),
+        otherCarLiability: insuranceHistory?.otherCarLiability
+          ?? (acc?.otherCarLiabilityAmount != null ? { amount: acc.otherCarLiabilityAmount, count: acc.otherCarLiabilityCount } : null),
+      }
+    : null;
+
+  const engineDiagnostics = acc
+    ? {
+        selfDiagnosis: acc?.engineSelfDiagnosis ?? engine?.selfDiagnosis ?? null,
+        oilLeakage: acc?.oilLeakage ?? engine?.oilLeakage ?? null,
+        coolantLeakage: acc?.coolantLeakage ?? engine?.coolantLeakage ?? null,
+      }
+    : null;
+
+  const inspectionInfo = acc
+    ? {
+        firstRegistration: vehicleBlock?.firstRegistration ?? null,
+        inspectionValidFrom: vehicleBlock?.inspectionValidFrom ?? null,
+        inspectionValidUntil: vehicleBlock?.inspectionValidUntil ?? null,
+        warrantyType: vehicleBlock?.warrantyType ?? null,
+        engineType: vehicleBlock?.engineType ?? null,
+        inspectionNumber: vehicleBlock?.inspectionNumber ?? null,
+      }
+    : null;
+
+  // Prefer the dedicated options endpoint categories; fall back to embedded options.
+  const optionStrings = bundle?.optionCategories
+    ? flattenOptions(bundle.optionCategories as any)
+    : flattenOptions(data.options);
+
+  // Prefer a value that actually looks like a VIN (the API sometimes puts a
+  // Korean license plate in apiCar.vin while the real VIN sits in the accident block).
+  const looksLikeVin = (s: unknown) => typeof s === "string" && /^[A-HJ-NPR-Z0-9]{11,17}$/i.test(s);
+  const vin = looksLikeVin(data.vin)
+    ? data.vin!
+    : looksLikeVin(vehicleBlock?.vin)
+      ? vehicleBlock.vin
+      : (data.vin ?? vehicleBlock?.vin ?? null);
 
   return {
     id: data.id ?? data.encar_id,
@@ -144,14 +249,21 @@ export function mapEncarToVehicle(raw: unknown) {
     coming_soon: false,
     city: data.location || "Korea",
     korea_location: data.location || "Korea",
-    options: flattenOptions(data.options),
-    accident_history: formatAccidentHistory(data.accidentHistory),
+    options: optionStrings,
+    accident_history: formatAccidentHistory(accidentBlock, data.accidentHistory),
     inspection_notes: formatExportWarnings(data.exportEligibility),
     description: data.sellerComment || null,
     description_ar: null,
     condition: "Used",
     stock_number: data.id ?? data.encar_id ?? null,
     public_notes: null,
-    vin: data.vin ?? null,
+    vin,
+    // ---- Enriched accident / inspection data ----
+    simple_repairs: simpleRepairs,
+    structural_repairs: structuralRepairs,
+    body_damage: bodyDamage,
+    insurance,
+    engine_diagnostics: engineDiagnostics,
+    inspection_info: inspectionInfo,
   };
 }

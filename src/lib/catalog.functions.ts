@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
-import { fetchEncarDetail, fetchEncarList } from "./encar.api";
+import { fetchEncarDetail, fetchEncarList, fetchVehicleDetailBundle } from "./encar.api";
 import { mapEncarToVehicle } from "./encar.mapper";
 
 function publicClient() {
@@ -52,7 +52,7 @@ export const listVehicles = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const rawList = await fetchEncarList({ limit: data.limit ?? 50 });
-      const vehicles = rawList.map(mapEncarToVehicle);
+      const vehicles = rawList.map((c) => mapEncarToVehicle(c));
       // The API has no "featured" flag — surface the first N as featured.
       return data.featuredOnly ? vehicles.slice(0, data.limit ?? 4) : vehicles;
     } catch (err) {
@@ -97,8 +97,12 @@ export const getVehicleBySlug = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const id = data.slug.match(/(\d+)$/)?.[1] ?? data.slug;
-      const raw = await fetchEncarDetail(id);
-      return mapEncarToVehicle(raw);
+      const bundle = await fetchVehicleDetailBundle(id);
+      return mapEncarToVehicle(bundle.car, {
+        accident: bundle.accident,
+        optionCategories: bundle.optionCategories,
+        inspectionImages: bundle.inspectionImages,
+      });
     } catch (err) {
       console.error("[getVehicleBySlug] Encar API error:", err);
       return null;
@@ -136,7 +140,7 @@ export const listEncarVehicles = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const rawList = await fetchEncarList({ limit: data.limit ?? 20 });
-    return rawList.map(mapEncarToVehicle);
+    return rawList.map((c) => mapEncarToVehicle(c));
   });
 
 // ---------- Accessories ----------
