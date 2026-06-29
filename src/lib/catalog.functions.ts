@@ -47,11 +47,36 @@ export const listVehicles = createServerFn({ method: "GET" })
     z.object({
       featuredOnly: z.boolean().optional(),
       limit: z.number().int().min(1).max(100).optional(),
+      // Server-side filters (forwarded to the Rinevo API).
+      brand: z.string().optional(),
+      model: z.string().optional(),
+      yearFrom: z.number().int().optional(),
+      yearTo: z.number().int().optional(),
+      maxMileage: z.number().int().optional(),
+      priceFromKrw: z.number().int().optional(),
+      priceToKrw: z.number().int().optional(),
+      fuel: z.string().optional(),
+      color: z.string().optional(),
+      bodyType: z.string().optional(),
+      sort: z.enum(["newest", "price-low", "price-high", "mileage-low"]).optional(),
     }).parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     try {
-      const rawList = await fetchEncarList({ limit: data.limit ?? 50 });
+      const rawList = await fetchEncarList({
+        limit: data.limit ?? 50,
+        brand: data.brand,
+        model: data.model,
+        yearFrom: data.yearFrom,
+        yearTo: data.yearTo,
+        maxMileage: data.maxMileage,
+        priceFromKrw: data.priceFromKrw,
+        priceToKrw: data.priceToKrw,
+        fuel: data.fuel,
+        color: data.color,
+        bodyType: data.bodyType,
+        sort: data.sort,
+      });
       const vehicles = rawList.map((c) => mapEncarToVehicle(c));
       // The API has no "featured" flag — surface the first N as featured.
       return data.featuredOnly ? vehicles.slice(0, data.limit ?? 4) : vehicles;

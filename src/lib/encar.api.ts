@@ -31,11 +31,64 @@ function normalizeImages<T extends { image?: string; images?: string[] }>(car: T
   };
 }
 
-// ENDPOINT 1 — GET /cars?limit=&page= → array is at json.data.cars (NOT json.data)
-export async function fetchEncarList(params?: { limit?: number; page?: number }): Promise<unknown[]> {
+// The Rinevo API requires fuel codes, not human-readable strings.
+// Our mapper produces "petrol"/"diesel"/"hybrid"/"electric"; map both spellings.
+const FUEL_API_CODE: Record<string, string> = {
+  petrol: "gas", gasoline: "gas", gas: "gas",
+  diesel: "die", die: "die",
+  hybrid: "hyb", hyb: "hyb",
+  electric: "elec", ev: "elec", elec: "elec",
+};
+
+const SORT_API: Record<string, [string, string]> = {
+  newest: ["relevance", "desc"],
+  "price-low": ["price", "asc"],
+  "price-high": ["price", "desc"],
+  "mileage-low": ["mileage", "asc"],
+};
+
+export type ListFilters = {
+  limit?: number;
+  page?: number;
+  brand?: string;
+  model?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  maxMileage?: number;
+  priceFromKrw?: number;
+  priceToKrw?: number;
+  fuel?: string; // petrol|diesel|hybrid|electric → mapped to API code
+  color?: string;
+  bodyType?: string; // must be the exact API taxonomy string
+  sort?: "newest" | "price-low" | "price-high" | "mileage-low";
+};
+
+// ENDPOINT 1 — GET /cars?<filters> → array is at json.data.cars (NOT json.data).
+// Server-side filters supported by the API: brand, model, yearFrom/yearTo,
+// maxMileage, priceFromKrw/priceToKrw, fuelType (coded), color, bodyType, sort.
+export async function fetchEncarList(params?: ListFilters): Promise<unknown[]> {
   const url = new URL(`${BASE_URL}/cars`);
-  if (params?.limit != null) url.searchParams.set("limit", String(params.limit));
-  if (params?.page != null) url.searchParams.set("page", String(params.page));
+  const p = url.searchParams;
+  if (params?.limit != null) p.set("limit", String(params.limit));
+  if (params?.page != null) p.set("page", String(params.page));
+  if (params?.brand) p.set("brand", params.brand);
+  if (params?.model) p.set("model", params.model);
+  if (params?.yearFrom) p.set("yearFrom", String(params.yearFrom));
+  if (params?.yearTo) p.set("yearTo", String(params.yearTo));
+  if (params?.maxMileage) p.set("maxMileage", String(Math.round(params.maxMileage)));
+  if (params?.priceFromKrw) p.set("priceFromKrw", String(Math.round(params.priceFromKrw)));
+  if (params?.priceToKrw) p.set("priceToKrw", String(Math.round(params.priceToKrw)));
+  if (params?.fuel) {
+    const code = FUEL_API_CODE[params.fuel.toLowerCase()];
+    if (code) p.set("fuelType", code);
+  }
+  if (params?.color) p.set("color", params.color);
+  if (params?.bodyType) p.set("bodyType", params.bodyType);
+  if (params?.sort && SORT_API[params.sort]) {
+    const [by, order] = SORT_API[params.sort];
+    p.set("sortBy", by);
+    p.set("sortOrder", order);
+  }
 
   const res = await fetch(url.toString(), { headers: getHeaders(), cache: "no-store" });
   const json = (await res.json()) as {
