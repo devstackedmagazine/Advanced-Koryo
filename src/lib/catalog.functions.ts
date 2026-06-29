@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
-import { fetchEncarDetail, fetchEncarList } from "./encar.api";
+import { fetchEncarDetail, fetchEncarList, fetchVehicleDetailBundle } from "./encar.api";
 import { mapEncarToVehicle } from "./encar.mapper";
 
 function publicClient() {
@@ -47,12 +47,37 @@ export const listVehicles = createServerFn({ method: "GET" })
     z.object({
       featuredOnly: z.boolean().optional(),
       limit: z.number().int().min(1).max(100).optional(),
+      // Server-side filters (forwarded to the Rinevo API).
+      brand: z.string().optional(),
+      model: z.string().optional(),
+      yearFrom: z.number().int().optional(),
+      yearTo: z.number().int().optional(),
+      maxMileage: z.number().int().optional(),
+      priceFromKrw: z.number().int().optional(),
+      priceToKrw: z.number().int().optional(),
+      fuel: z.string().optional(),
+      color: z.string().optional(),
+      bodyType: z.string().optional(),
+      sort: z.enum(["newest", "price-low", "price-high", "mileage-low"]).optional(),
     }).parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     try {
-      const rawList = await fetchEncarList({ limit: data.limit ?? 50 });
-      const vehicles = rawList.map(mapEncarToVehicle);
+      const rawList = await fetchEncarList({
+        limit: data.limit ?? 50,
+        brand: data.brand,
+        model: data.model,
+        yearFrom: data.yearFrom,
+        yearTo: data.yearTo,
+        maxMileage: data.maxMileage,
+        priceFromKrw: data.priceFromKrw,
+        priceToKrw: data.priceToKrw,
+        fuel: data.fuel,
+        color: data.color,
+        bodyType: data.bodyType,
+        sort: data.sort,
+      });
+      const vehicles = rawList.map((c) => mapEncarToVehicle(c));
       // The API has no "featured" flag — surface the first N as featured.
       return data.featuredOnly ? vehicles.slice(0, data.limit ?? 4) : vehicles;
     } catch (err) {
@@ -97,8 +122,12 @@ export const getVehicleBySlug = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const id = data.slug.match(/(\d+)$/)?.[1] ?? data.slug;
-      const raw = await fetchEncarDetail(id);
-      return mapEncarToVehicle(raw);
+      const bundle = await fetchVehicleDetailBundle(id);
+      return mapEncarToVehicle(bundle.car, {
+        accident: bundle.accident,
+        optionCategories: bundle.optionCategories,
+        inspectionImages: bundle.inspectionImages,
+      });
     } catch (err) {
       console.error("[getVehicleBySlug] Encar API error:", err);
       return null;
@@ -136,7 +165,7 @@ export const listEncarVehicles = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const rawList = await fetchEncarList({ limit: data.limit ?? 20 });
-    return rawList.map(mapEncarToVehicle);
+    return rawList.map((c) => mapEncarToVehicle(c));
   });
 
 // ---------- Accessories ----------

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageLayout } from "@/components/site/PageLayout";
 import { VehicleCard } from "@/components/site/VehicleCard";
+import { CarDamageDiagram } from "@/components/site/CarDamageDiagram";
 import { useI18n, fmt } from "@/lib/i18n";
 import { calculate, PORTS } from "@/lib/import-calc";
 import { getVehicleBySlug, listVehicles } from "@/lib/catalog.functions";
@@ -158,6 +159,7 @@ function CarDetail() {
         : { cls: "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400", Icon: CheckCircle2 }
     : null;
   const warnings: string[] = String(veh.inspection_notes ?? "").split(" | ").map((s) => s.trim()).filter(Boolean);
+  const hasInspectionData = !!(veh.inspection_info || veh.engine_diagnostics || (veh.body_damage?.length ?? 0) > 0);
 
   const similarList = (similar ?? []).filter((s: any) => s.id !== veh.id && s.make === veh.make).slice(0, 4);
 
@@ -357,13 +359,23 @@ function CarDetail() {
               )}
 
               {/* Vehicle history */}
-              {(historyTone || veh.public_notes) && (
+              {(historyTone || veh.public_notes || hasInspectionData) && (
                 <section>
                   <SectionTitle>{lang === "ar" ? "تاريخ المركبة" : "Vehicle History"}</SectionTitle>
                   {historyTone && (
                     <div className={`rounded-lg border p-4 flex items-center gap-2 text-sm font-semibold ${historyTone.cls}`}>
                       <historyTone.Icon className="w-5 h-5 shrink-0" />
                       <span className="min-w-0 break-words">{accidentStr}</span>
+                    </div>
+                  )}
+                  {hasInspectionData && (
+                    <div className="mt-3">
+                      <p className="mb-3 text-sm text-muted-foreground leading-relaxed">
+                        {lang === "ar"
+                          ? "مخطط الفحص يوضح الألواح التي تم إصلاحها أو استبدالها. خريطة نظيفة تعني عدم وجود أضرار مسجّلة."
+                          : "The inspection map shows panels that were repaired or replaced. A clean map means no recorded damage."}
+                      </p>
+                      <CarDamageDiagram items={veh.body_damage ?? []} lang={lang} />
                     </div>
                   )}
                   {veh.public_notes && (
@@ -393,6 +405,69 @@ function CarDetail() {
                         </div>
                       );
                     })}
+                  </div>
+                </section>
+              )}
+
+              {/* Repair history (from accident endpoint) */}
+              {(veh.simple_repairs?.length > 0 || veh.structural_repairs?.length > 0) && (
+                <section>
+                  <SectionTitle>{lang === "ar" ? "سجل الإصلاحات" : "Repair History"}</SectionTitle>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {veh.simple_repairs?.length > 0 && (
+                      <RepairTable title={lang === "ar" ? "ألواح الهيكل الخارجي" : "Body Panels"} rows={veh.simple_repairs} lang={lang} />
+                    )}
+                    {veh.structural_repairs?.length > 0 && (
+                      <RepairTable title={lang === "ar" ? "الهيكل الإنشائي" : "Structural"} rows={veh.structural_repairs} lang={lang} />
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {lang === "ar"
+                      ? "X = تم الاستبدال · W = تم الإصلاح"
+                      : "X = Replaced · W = Repaired"}
+                  </p>
+                </section>
+              )}
+
+              {/* Inspection & registration */}
+              {veh.inspection_info && (veh.vin || veh.inspection_info.inspectionValidUntil || veh.inspection_info.engineType) && (
+                <section>
+                  <SectionTitle>{lang === "ar" ? "الفحص والتسجيل" : "Inspection & Registration"}</SectionTitle>
+                  <div className="rounded-lg border border-border bg-card divide-y divide-border text-sm">
+                    {veh.vin && <DataRow k="VIN" v={veh.vin} />}
+                    {veh.inspection_info.firstRegistration && <DataRow k={lang === "ar" ? "أول تسجيل" : "First registration"} v={fmtDate(veh.inspection_info.firstRegistration)} />}
+                    {veh.inspection_info.inspectionValidFrom && <DataRow k={lang === "ar" ? "الفحص من" : "Inspection valid from"} v={fmtDate(veh.inspection_info.inspectionValidFrom)} />}
+                    {veh.inspection_info.inspectionValidUntil && <DataRow k={lang === "ar" ? "الفحص حتى" : "Inspection valid until"} v={fmtDate(veh.inspection_info.inspectionValidUntil)} />}
+                    {veh.inspection_info.engineType && <DataRow k={lang === "ar" ? "نوع المحرك" : "Engine type"} v={veh.inspection_info.engineType} />}
+                    {veh.inspection_info.warrantyType && <DataRow k={lang === "ar" ? "نوع الضمان" : "Warranty type"} v={veh.inspection_info.warrantyType} />}
+                    {veh.inspection_info.inspectionNumber && <DataRow k={lang === "ar" ? "رقم الفحص" : "Inspection No."} v={String(veh.inspection_info.inspectionNumber)} />}
+                  </div>
+                </section>
+              )}
+
+              {/* Engine diagnostics */}
+              {veh.engine_diagnostics && (veh.engine_diagnostics.selfDiagnosis || veh.engine_diagnostics.oilLeakage || veh.engine_diagnostics.coolantLeakage) && (
+                <section>
+                  <SectionTitle>{lang === "ar" ? "تشخيص المحرك" : "Engine Diagnostics"}</SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <DiagCard label={lang === "ar" ? "التشخيص الذاتي" : "Self-diagnosis"} value={veh.engine_diagnostics.selfDiagnosis} />
+                    <DiagCard label={lang === "ar" ? "تسرب الزيت" : "Oil leakage"} value={veh.engine_diagnostics.oilLeakage} />
+                    <DiagCard label={lang === "ar" ? "تسرب سائل التبريد" : "Coolant leakage"} value={veh.engine_diagnostics.coolantLeakage} />
+                  </div>
+                </section>
+              )}
+
+              {/* Insurance history */}
+              {veh.insurance && (Number(veh.insurance.totalIncidents) > 0 || Number(veh.insurance.totalDamageAmount) > 0 || Number(veh.insurance.ownerChangeCnt) > 0) && (
+                <section>
+                  <SectionTitle>{lang === "ar" ? "سجل التأمين" : "Insurance History"}</SectionTitle>
+                  <div className="rounded-lg border border-border bg-card divide-y divide-border text-sm">
+                    {veh.insurance.totalIncidents != null && <DataRow k={lang === "ar" ? "عدد الحوادث" : "Total incidents"} v={String(veh.insurance.totalIncidents)} />}
+                    {veh.insurance.totalDamageAmount != null && <DataRow k={lang === "ar" ? "إجمالي الأضرار" : "Total damage"} v={`₩${fmt(Number(veh.insurance.totalDamageAmount))}`} />}
+                    {veh.insurance.ownCarDamage?.amount != null && <DataRow k={lang === "ar" ? "ضرر السيارة" : "Own car damage"} v={`₩${fmt(Number(veh.insurance.ownCarDamage.amount))} (${veh.insurance.ownCarDamage.count ?? 0})`} />}
+                    {veh.insurance.otherCarLiability?.amount != null && <DataRow k={lang === "ar" ? "أضرار الطرف الآخر" : "Other-car liability"} v={`₩${fmt(Number(veh.insurance.otherCarLiability.amount))} (${veh.insurance.otherCarLiability.count ?? 0})`} />}
+                    {veh.insurance.ownerChangeCnt != null && <DataRow k={lang === "ar" ? "تغييرات الملكية" : "Owner changes"} v={String(veh.insurance.ownerChangeCnt)} />}
+                    {veh.insurance.totalLossCnt != null && <DataRow k={lang === "ar" ? "خسارة كلية" : "Total-loss count"} v={String(veh.insurance.totalLossCnt)} />}
                   </div>
                 </section>
               )}
@@ -430,6 +505,55 @@ function CalcRow({ k, v }: { k: string; v: number }) {
     <div className="flex justify-between gap-3">
       <dt className="text-muted-foreground">{k}</dt>
       <dd className="font-semibold">{fmt(Math.round(v))}</dd>
+    </div>
+  );
+}
+
+function fmtDate(d?: string | null): string {
+  if (!d) return "—";
+  const s = String(d);
+  if (/^\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  return s;
+}
+
+function DataRow({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <span className="text-muted-foreground">{k}</span>
+      <span className="font-semibold text-end break-words min-w-0">{v}</span>
+    </div>
+  );
+}
+
+function RepairTable({ title, rows, lang }: { title: string; rows: { partName: string; status: string; marker: "X" | "W" }[]; lang: "ar" | "en" }) {
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border text-xs font-bold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="divide-y divide-border">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+            <span className="min-w-0 break-words">{r.partName}</span>
+            <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold ${
+              r.marker === "X" ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+            }`}>
+              {r.marker} · {lang === "ar" ? (r.marker === "X" ? "استبدال" : "إصلاح") : r.status}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DiagCard({ label, value }: { label: string; value: string | null }) {
+  const v = value ?? "—";
+  const good = /none|good|normal|정상|없음/i.test(v);
+  const na = v === "—" || /n\/a/i.test(v);
+  const cls = na ? "text-muted-foreground" : good ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-400";
+  return (
+    <div className="rounded-lg border border-border bg-card p-3">
+      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</div>
+      <div className={`mt-0.5 text-sm font-semibold break-words ${cls}`}>{v}</div>
     </div>
   );
 }
