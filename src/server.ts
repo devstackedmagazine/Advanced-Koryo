@@ -37,8 +37,23 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+// Cloudflare passes env bindings (vars + secrets) as the `env` parameter to
+// fetch(). The nodejs_compat flag should populate process.env from it, but
+// nitro's unenv polyfill can shadow that. Copy them over explicitly so all
+// `process.env.*` references in the app resolve correctly.
+function populateProcessEnv(env: unknown) {
+  if (!env || typeof env !== "object") return;
+  if (typeof process === "undefined" || !process.env) return;
+  for (const [key, value] of Object.entries(env as Record<string, unknown>)) {
+    if (typeof value === "string" && !(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    populateProcessEnv(env);
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

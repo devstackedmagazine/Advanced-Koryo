@@ -2,10 +2,12 @@
 // Four endpoints: list, detail, accident history, options.
 // All image URLs are normalized to direct ci.encar.com links (never the paid proxy).
 
-const BASE_URL = process.env.RINEVO_API_BASE_URL ?? "https://api.rinevoapi.autos/api/scraper";
-const API_KEY = process.env.APICARS_API_KEY!;
+function getBaseUrl() {
+  return process.env.RINEVO_API_BASE_URL ?? "https://api.rinevoapi.autos/api/scraper";
+}
 
 function getHeaders() {
+  const API_KEY = process.env.APICARS_API_KEY;
   if (!API_KEY) throw new Error("APICARS_API_KEY is not set in environment");
   return { "x-api-key": API_KEY };
 }
@@ -67,7 +69,7 @@ export type ListFilters = {
 // Server-side filters supported by the API: brand, model, yearFrom/yearTo,
 // maxMileage, priceFromKrw/priceToKrw, fuelType (coded), color, bodyType, sort.
 export async function fetchEncarList(params?: ListFilters): Promise<unknown[]> {
-  const url = new URL(`${BASE_URL}/cars`);
+  const url = new URL(`${getBaseUrl()}/cars`);
   const p = url.searchParams;
   if (params?.limit != null) p.set("limit", String(params.limit));
   if (params?.page != null) p.set("page", String(params.page));
@@ -105,7 +107,7 @@ export async function fetchEncarList(params?: ListFilters): Promise<unknown[]> {
 // ENDPOINT 2 — GET /vehicle/{id}/full → json.data. Falls back to the list on failure.
 export async function fetchEncarDetail(id: string): Promise<unknown> {
   try {
-    const res = await fetch(`${BASE_URL}/vehicle/${id}/full`, {
+    const res = await fetch(`${getBaseUrl()}/vehicle/${id}/full`, {
       headers: getHeaders(),
       cache: "no-store",
       signal: AbortSignal.timeout(8000),
@@ -128,7 +130,7 @@ export async function fetchEncarDetail(id: string): Promise<unknown> {
 
 // ENDPOINT 3 — GET /accident-history/{id} → json.data
 export async function fetchAccidentHistory(id: string): Promise<unknown> {
-  const res = await fetch(`${BASE_URL}/accident-history/${id}`, {
+  const res = await fetch(`${getBaseUrl()}/accident-history/${id}`, {
     headers: getHeaders(),
     cache: "no-store",
   });
@@ -139,7 +141,7 @@ export async function fetchAccidentHistory(id: string): Promise<unknown> {
 
 // ENDPOINT 4 — GET /options/{id} → json.data is a numeric-keyed object; return Object.values()
 export async function fetchVehicleOptions(id: string): Promise<unknown[]> {
-  const res = await fetch(`${BASE_URL}/options/${id}`, {
+  const res = await fetch(`${getBaseUrl()}/options/${id}`, {
     headers: getHeaders(),
     cache: "no-store",
   });
@@ -162,9 +164,9 @@ export async function fetchVehicleDetailBundle(id: string): Promise<VehicleDetai
   const reqOpts = { headers, cache: "no-store" as const, signal: AbortSignal.timeout(8000) };
 
   const [carRes, accRes, optRes] = await Promise.all([
-    fetch(`${BASE_URL}/vehicle/${id}/full`, reqOpts),
-    fetch(`${BASE_URL}/accident-history/${id}`, reqOpts).catch(() => null),
-    fetch(`${BASE_URL}/options/${id}`, reqOpts).catch(() => null),
+    fetch(`${getBaseUrl()}/vehicle/${id}/full`, reqOpts),
+    fetch(`${getBaseUrl()}/accident-history/${id}`, reqOpts).catch(() => null),
+    fetch(`${getBaseUrl()}/options/${id}`, reqOpts).catch(() => null),
   ]);
 
   // --- Car detail (mandatory, with list fallback) ---
