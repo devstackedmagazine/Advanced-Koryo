@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "advanced-koryo",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
+  "vars": {
+    "SUPABASE_URL": "https://cxkxannzwwmtigraiqjo.supabase.co",
+    "SUPABASE_PROJECT_ID": "cxkxannzwwmtigraiqjo",
+    "RINEVO_API_BASE_URL": "https://api.rinevoapi.autos/api/scraper"
+  }
+}

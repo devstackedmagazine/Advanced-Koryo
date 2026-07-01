@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "secrets:sync": "node scripts/sync-secrets.mjs",
+    "secrets:sync:dry": "node scripts/sync-secrets.mjs --dry-run",
+    "deploy": "vite build && node scripts/sync-secrets.mjs && wrangler deploy --config .output/server/wrangler.json"
   },
   "dependencies": {
     "@fontsource/noto-kufi-arabic": "^5.2.9",
@@ -87,6 +90,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "wrangler": "^4.105.0"
   }
 }
